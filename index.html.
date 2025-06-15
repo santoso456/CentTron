@@ -108,6 +108,191 @@
   </style>
 </head>
 <body>
-  <!-- truncated for brevity -->
+  <div class="login-container" id="loginBox">
+    <h1>Login CentTron</h1>
+    <input type="text" id="loginUsername" placeholder="Username" /><br>
+    <input type="text" id="loginWallet" placeholder="TRON Wallet Address" /><br>
+    <button class="btn" onclick="login()">Masuk / Daftar</button>
+  </div>
+
+  <div class="container" id="mainApp" style="display:none;">
+    <h1>CentTron Mining</h1>
+
+    <!-- Rig Machine -->
+    <div class="rig-box">
+      <div class="rotor"></div>
+      <div class="monitor">
+        <div class="temp-box">🌡 Temp: <span id="temp">72</span>°C</div>
+        <canvas id="chart" width="130" height="25"></canvas>
+      </div>
+      <div class="lightning"></div>
+    </div>
+
+    <p id="desc">Simulasi mining berbasis AI. Mulai tambang token Anda sekarang!</p>
+    <div class="lang-selector">
+      <select id="lang" onchange="setLanguage()">
+        <option value="id">Indonesia</option>
+        <option value="en">English</option>
+        <option value="zh">中文</option>
+        <option value="es">Español</option>
+        <option value="ar">العربية</option>
+      </select>
+    </div>
+
+    <div class="stat">👤 User: <span id="userName"></span></div>
+    <div class="stat">🔐 Wallet: <span id="userWallet"></span></div>
+    <div class="stat">⚡ GH/s: <span id="gh">0</span></div>
+    <div class="stat">💰 Balance: <span id="balance">0</span> TRX</div>
+
+    <button class="btn" onclick="startMining()">Start Mining</button>
+    <button class="btn" onclick="upgrade()">Upgrade GH/s (10 TRX)</button>
+    <button class="btn" onclick="openDeposit()">Deposit</button>
+    <button class="btn" onclick="withdraw()">Withdraw</button>
+    <button class="btn" onclick="logout()">Logout</button>
+
+    <div class="stat">🔗 Link Referral:<br><input readonly id="refLink"></div>
+  </div>
+
+  <div class="container" id="disclaimerBox" style="margin-top: 30px; font-size: 0.9em; background-color: #222; color: #ccc; padding: 15px;">
+    <h3 style="color: gold;">Disclaimer</h3>
+    <p id="disclaimerText">
+      CentTron adalah simulasi mining berbasis AI yang bertujuan edukatif dan hiburan...
+    </p>
+  </div>
+
+  <script>
+    let mining = false;
+    let interval, temp = 72;
+    let user = null;
+    let tempDir = 1;
+    const chartCanvas = document.getElementById('chart');
+    const ctx = chartCanvas.getContext('2d');
+    const chartData = Array(20).fill(70);
+
+    function drawChart() {
+      ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+      ctx.beginPath();
+      ctx.strokeStyle = 'lime';
+      ctx.lineWidth = 2;
+      chartData.forEach((val, i) => {
+        const x = i * (chartCanvas.width / chartData.length);
+        const y = chartCanvas.height - ((val - 60) * 2);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    function login() {
+      const username = document.getElementById('loginUsername').value.trim();
+      const wallet = document.getElementById('loginWallet').value.trim();
+      if (!username || wallet.length < 20) {
+        alert("Masukkan username dan alamat wallet TRON yang valid.");
+        return;
+      }
+      user = { username, wallet, balance: 0, gh: 10 };
+      localStorage.setItem('centtron_user', JSON.stringify(user));
+      loadApp();
+    }
+
+    function loadApp() {
+      const saved = localStorage.getItem('centtron_user');
+      if (!saved) return;
+      user = JSON.parse(saved);
+      document.getElementById('loginBox').style.display = 'none';
+      document.getElementById('mainApp').style.display = 'block';
+      document.getElementById('userName').textContent = user.username;
+      document.getElementById('userWallet').textContent = user.wallet;
+      document.getElementById('balance').textContent = user.balance.toFixed(4);
+      document.getElementById('gh').textContent = user.gh;
+      document.getElementById('refLink').value = location.href.split('?')[0] + `?ref=${user.username}`;
+    }
+
+    function startMining() {
+      if (mining) return;
+      mining = true;
+      interval = setInterval(() => {
+        const profitPerSecond = (user.gh * 0.00002);
+        user.balance += profitPerSecond;
+        document.getElementById('balance').textContent = user.balance.toFixed(4);
+        temp += tempDir;
+        if (temp > 78 || temp < 70) tempDir *= -1;
+        chartData.push(temp);
+        chartData.shift();
+        document.getElementById('temp').textContent = temp;
+        drawChart();
+        localStorage.setItem('centtron_user', JSON.stringify(user));
+      }, 1000);
+    }
+
+    function upgrade() {
+      if (user.balance < 10) {
+        alert("Upgrade butuh 10 TRX");
+        return;
+      }
+      user.balance -= 10;
+      user.gh += 10;
+      document.getElementById('gh').textContent = user.gh;
+      document.getElementById('balance').textContent = user.balance.toFixed(4);
+      localStorage.setItem('centtron_user', JSON.stringify(user));
+    }
+
+    function openDeposit() {
+      alert("Deposit ke alamat TRON berikut:\n\nTUQB7NNCpo6QznYSjKfjmyMLWZu2c9vQHJ\n\nSetelah transfer, saldo akan diverifikasi manual.");
+    }
+
+    function withdraw() {
+      if (user.balance < 10) {
+        alert("Minimum withdraw 10 TRX");
+        return;
+      }
+      const amount = user.balance.toFixed(4);
+      const wallet = user.wallet;
+      alert(`Proses withdraw sebesar ${amount} TRX ke alamat TRON: ${wallet}\n\n(Catat & proses manual oleh admin)`);
+      user.balance = 0;
+      document.getElementById('balance').textContent = user.balance.toFixed(4);
+      localStorage.setItem('centtron_user', JSON.stringify(user));
+    }
+
+    function logout() {
+      localStorage.removeItem('centtron_user');
+      location.reload();
+    }
+
+    function setLanguage() {
+      const lang = document.getElementById('lang').value;
+      const translations = {
+        id: {
+          desc: 'Simulasi mining berbasis AI. Mulai tambang token Anda sekarang!',
+          disclaimer: 'CentTron adalah simulasi mining berbasis AI yang bertujuan edukatif dan hiburan...'
+        },
+        en: {
+          desc: 'AI-powered mining simulation. Start mining your tokens now!',
+          disclaimer: 'CentTron is an AI-based mining simulation for educational and entertainment purposes only...'
+        },
+        zh: {
+          desc: '基于AI的挖矿模拟。现在开始挖矿你的代币吧！',
+          disclaimer: 'CentTron 是一款基于AI的挖矿模拟游戏，旨在教育和娱乐...'
+        },
+        es: {
+          desc: 'Simulación de minería con IA. ¡Comienza a minar tus tokens ahora!',
+          disclaimer: 'CentTron es una simulación de minería basada en IA con fines educativos y de entretenimiento...'
+        },
+        ar: {
+          desc: 'محاكاة تعدين مدعومة بالذكاء الاصطناعي. ابدأ في تعدين عملاتك الآن!',
+          disclaimer: 'CentTron هو محاكاة تعدين مدعومة بالذكاء الاصطناعي لأغراض تعليمية وترفيهية فقط...'
+        }
+      };
+      document.getElementById('desc').textContent = translations[lang].desc;
+      document.getElementById('disclaimerText').textContent = translations[lang].disclaimer;
+    }
+
+    window.onload = function () {
+      loadApp();
+      drawChart();
+      const params = new URLSearchParams(location.search);
+      const ref = params.get('ref');
+      if (ref) alert("Kamu masuk melalui referral: " + ref);
+    }
+  </script>
 </body>
 </html>
